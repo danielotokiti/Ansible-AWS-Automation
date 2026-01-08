@@ -1,0 +1,78 @@
+---
+- name: Ensure admin user exists
+  user:
+    name: "{{ admin_user }}"
+    groups: sudo
+    append: yes
+    shell: /bin/bash
+    create_home: yes
+    state: present
+
+- name: Ensure admin user has authorized SSH key
+  authorized_key:
+    user: "{{ admin_user }}"
+    key: "{{ admin_authorized_key }}"
+    state: present
+
+- name: Disable SSH password authentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PasswordAuthentication'
+    line: "PasswordAuthentication {{ ssh_password_authentication }}"
+    backup: yes
+  notify: Restart ssh
+
+- name: Disable root SSH login
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PermitRootLogin'
+    line: "PermitRootLogin {{ ssh_permit_root_login }}"
+    backup: yes
+  notify: Restart ssh
+
+- name: Restrict SSH to allowed users
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^AllowUsers'
+    line: "AllowUsers {{ allow_users | join(' ') }}"
+    backup: yes
+  notify: Restart ssh
+
+
+
+- name: Install UFW
+  apt:
+    name: ufw
+    state: present
+
+- name: Allow required ports through UFW
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+  loop: "{{ ufw_allowed_ports }}"
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+    policy: deny
+
+
+
+- name: Install fail2ban
+  apt:
+    name: fail2ban
+    state: present
+
+- name: Ensure fail2ban is running
+  service:
+    name: fail2ban
+    state: started
+    enabled: true
+
+
+
+- name: Ensure systemd-timesyncd is enabled
+  service:
+    name: systemd-timesyncd
+    state: started
+    enabled: true
