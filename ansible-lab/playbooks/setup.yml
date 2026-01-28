@@ -1,0 +1,9 @@
+---
+- name: Baseline server setup
+  hosts: app
+  become: true
+
+  roles:
+    -common
+    -hardening
+
